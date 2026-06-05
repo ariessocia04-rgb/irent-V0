@@ -20,10 +20,25 @@ import { UpdatesTab } from '@/components/tabs/updates-tab';
 import { ChatTab } from '@/components/tabs/chat-tab';
 
 export function IrentLayout() {
+  // Premium Demo Mode - Set to true for full access
+  const PREMIUM_DEMO_MODE = true;
+
   // Authentication State
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(PREMIUM_DEMO_MODE);
   const [landlordInfo, setLandlordInfo] = useState<LandlordInfo>(
-    defaultLandlordInfo
+    PREMIUM_DEMO_MODE
+      ? {
+          email: 'premium@demo.com',
+          password: 'demo',
+          phone: '+63 9XX XXX XXXX',
+          propertyAddress: 'Premium Demo Property',
+        }
+      : defaultLandlordInfo
+  );
+
+  // Subscription Tier - Set to 'premium' for full access
+  const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'pro' | 'premium'>(
+    PREMIUM_DEMO_MODE ? 'premium' : 'free'
   );
 
   // Tab State
@@ -62,6 +77,13 @@ export function IrentLayout() {
   // Main dashboard layout
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Premium Badge */}
+      {PREMIUM_DEMO_MODE && (
+        <div className="fixed top-2 right-2 md:top-4 md:right-4 z-50 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+          🚀 Premium Mode (Demo)
+        </div>
+      )}
+
       {/* Desktop Navigation */}
       <DesktopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -73,7 +95,20 @@ export function IrentLayout() {
             <RoomTab
               rooms={rooms}
               onRoomClick={() => {}}
-              onAddRoom={() => {}}
+              onAddRoom={() => {
+                // Premium users can add unlimited rooms
+                if (subscriptionTier === 'premium') {
+                  const newRoom = {
+                    id: Math.random().toString(),
+                    number: String(rooms.length + 101),
+                    tenantName: `Tenant ${rooms.length + 1}`,
+                    baseRent: 1500,
+                    status: 'vacant' as const,
+                  };
+                  setRooms([...rooms, newRoom]);
+                }
+              }}
+              isPremium={subscriptionTier === 'premium'}
             />
           )}
 
@@ -96,7 +131,10 @@ export function IrentLayout() {
           {activeTab === 'SALES' && <SalesTab sales={sales} />}
 
           {activeTab === 'UPDATES' && (
-            <UpdatesTab roomCount={rooms.length} />
+            <UpdatesTab
+              roomCount={rooms.length}
+              subscriptionTier={subscriptionTier}
+            />
           )}
 
           {activeTab === 'CHAT' && (

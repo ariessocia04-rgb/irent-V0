@@ -10,9 +10,10 @@ import { BillingWizard } from '@/components/billing/billing-wizard';
 import { Home } from 'lucide-react';
 import { formatCurrency } from '@/components/billing/billing-calculation-utils';
 
-export function RoomTab({ rooms, onRoomClick, onAddRoom }: RoomTabProps) {
+export function RoomTab({ rooms, onRoomClick, onAddRoom, isPremium = false }: RoomTabProps & { isPremium?: boolean }) {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [showWizard, setShowWizard] = useState(false);
+  const canAddRoom = isPremium || rooms.length < 1;
 
   const handleOpenWizard = (room: Room) => {
     setSelectedRoom(room);
@@ -32,21 +33,30 @@ export function RoomTab({ rooms, onRoomClick, onAddRoom }: RoomTabProps) {
         <Button
           onClick={onAddRoom}
           className={`${
-            rooms.length >= 1
+            !canAddRoom
               ? 'bg-gray-200 text-gray-400 cursor-not-allowed hover:bg-gray-200'
               : 'bg-[#1A73E8] hover:bg-[#1a73e8]/90 text-white'
           }`}
-          disabled={rooms.length >= 1}
+          disabled={!canAddRoom}
         >
           + Add New Room
         </Button>
       </div>
 
       {/* Free Tier Notice */}
-      {rooms.length >= 1 && (
+      {!isPremium && rooms.length >= 1 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <p className="text-amber-800 text-sm">
             <span className="font-semibold">Free Tier:</span> Max 1 room reached
+          </p>
+        </div>
+      )}
+
+      {/* Premium Mode Badge */}
+      {isPremium && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4">
+          <p className="text-indigo-700 text-sm">
+            <span className="font-semibold">✨ Premium Mode:</span> Unlimited rooms available
           </p>
         </div>
       )}
