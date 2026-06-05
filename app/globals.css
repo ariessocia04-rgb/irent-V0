@@ -117,14 +117,54 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* iRent Design System Variables */
+:root {
+  --color-brand-blue: #1A73E8;
+  --color-canvas: #F8F9FA;
+  --color-surface: #FFFFFF;
+  --color-text-primary: #202124;
+  --color-text-secondary: #5F6368;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-50 text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans bg-slate-50;
   }
+}
+
+/* Animations */
+@keyframes radioBlink {
+  0%, 100% {
+    opacity: 1;
+    r: 80;
+  }
+  50% {
+    opacity: 0.3;
+    r: 95;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-radio-blink {
+  animation: radioBlink 1.5s ease-in-out infinite;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.3s ease-out;
 }
