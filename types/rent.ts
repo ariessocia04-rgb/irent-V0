@@ -104,8 +104,18 @@ export interface RoomTabProps {
   rooms: Room[];
   onRoomClick: (room: Room) => void;
   onAddRoom?: () => void;
+  onAddRoomWithTenant?: (data: AddRoomData) => void;
   onCreateTenant?: (roomId: string, email: string, password: string) => void;
   userRole?: UserRole;
+  isPremium?: boolean;
+}
+
+export interface AddRoomData {
+  number: string;
+  baseRent: number;
+  tenantName: string;
+  email: string;
+  password: string;
 }
 
 export interface ReportTabProps {

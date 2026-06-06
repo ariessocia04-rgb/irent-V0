@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TabType, User, Tenant } from '@/types/rent';
+import { TabType, User, Tenant, Room, AddRoomData } from '@/types/rent';
 import {
   initialRooms,
   initialLedger,
@@ -22,6 +22,9 @@ import { TenantOnboardingModal } from '@/components/auth/tenant-onboarding-modal
 export function IrentLayout() {
   // Premium Demo Mode - Set to true for full access
   const PREMIUM_DEMO_MODE = true;
+
+  // UI State
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   // Authentication State
   const [isLoggedIn, setIsLoggedIn] = useState(PREMIUM_DEMO_MODE);
@@ -70,11 +73,41 @@ export function IrentLayout() {
     setIsLoggedIn(true);
   };
 
-  // Tenant Creation Handler
+  // Enhanced Add Room Handler (Captures Room + Tenant)
+  const handleAddRoomWithTenant = (data: AddRoomData) => {
+    const roomId = Math.random().toString(36).substr(2, 9);
+    const tenantId = Math.random().toString(36).substr(2, 9);
+
+    const newRoom: Room = {
+      id: roomId,
+      number: data.number,
+      tenantName: data.tenantName,
+      baseRent: data.baseRent,
+      status: 'occupied',
+    };
+
+    const newTenant: Tenant = {
+      id: tenantId,
+      name: data.tenantName,
+      avatar: data.tenantName.split(' ').map(n => n[0]).join('').toUpperCase(),
+      email: data.email,
+      password: data.password,
+      role: 'tenant',
+      isFirstLogin: true,
+      roomId: roomId,
+    };
+
+    setRooms([...rooms, newRoom]);
+    setTenants([...tenants, newTenant]);
+
+    console.log('[v0] Provisioned new unit and tenant:', { newRoom, newTenant });
+  };
+
+  // Tenant Creation Handler (Assigning to existing vacant room)
   const handleCreateTenant = (roomId: string, email: string, password: string) => {
     const newTenant: Tenant = {
       id: Math.random().toString(36).substr(2, 9),
-      name: 'New Tenant', // Placeholder until they complete onboarding
+      name: 'New Tenant',
       avatar: 'NT',
       email,
       password,
@@ -89,8 +122,6 @@ export function IrentLayout() {
         ? { ...room, status: 'occupied', tenantName: 'Pending Onboarding' }
         : room
     ));
-
-    console.log('[v0] Tenant created:', newTenant);
   };
 
   // Onboarding Completion Handler
@@ -113,38 +144,35 @@ export function IrentLayout() {
 
   // Main dashboard layout
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 transition-colors duration-300">
       {/* Premium Badge */}
       {PREMIUM_DEMO_MODE && (
-        <div className="fixed top-2 right-2 md:top-4 md:right-4 z-50 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+        <div className="fixed top-2 right-2 md:top-4 md:right-4 z-50 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
           🚀 Premium Mode (Demo)
         </div>
       )}
 
       {/* Desktop Navigation */}
-      <DesktopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <DesktopNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        isExpanded={isSidebarExpanded}
+        setIsExpanded={setIsSidebarExpanded}
+      />
 
-      {/* Main Content Area */}
-      <main className="md:ml-16 mb-20 md:mb-0">
-        <div className="p-6 md:p-8">
+      {/* Main Content Area - Slides with sidebar */}
+      <main
+        className={`transition-all duration-300 ${
+          isSidebarExpanded ? 'md:ml-64' : 'md:ml-16'
+        } mb-20 md:mb-0`}
+      >
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">
           {/* Tab Content */}
           {activeTab === 'ROOM' && (
             <RoomTab
               rooms={rooms}
               onRoomClick={() => {}}
-              onAddRoom={() => {
-                // Premium users can add unlimited rooms
-                if (subscriptionTier === 'premium') {
-                  const newRoom = {
-                    id: Math.random().toString(),
-                    number: String(rooms.length + 101),
-                    tenantName: '',
-                    baseRent: 1500,
-                    status: 'vacant' as const,
-                  };
-                  setRooms([...rooms, newRoom]);
-                }
-              }}
+              onAddRoomWithTenant={handleAddRoomWithTenant}
               onCreateTenant={handleCreateTenant}
               isPremium={subscriptionTier === 'premium'}
               userRole={userRole}
