@@ -10,3 +10,5 @@
 ⚠ Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
  GET / 200 in 702ms (next.js: 277ms, application-code: 425ms)
+  Reload env: .env.local
+  Reload env: .env.local
