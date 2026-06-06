@@ -7,6 +7,7 @@ import {
   TrendingUp,
   Settings,
   MessageCircle,
+  LogOut,
 } from 'lucide-react';
 
 interface DesktopNavigationProps {
@@ -14,6 +15,7 @@ interface DesktopNavigationProps {
   onTabChange: (tab: TabType) => void;
   isExpanded: boolean;
   setIsExpanded: (expanded: boolean) => void;
+  onLogout?: () => void;
 }
 
 const TAB_ICONS: Record<TabType, React.ReactNode> = {
@@ -39,6 +41,7 @@ export function DesktopNavigation({
   onTabChange,
   isExpanded,
   setIsExpanded,
+  onLogout,
 }: DesktopNavigationProps) {
   return (
     <div
@@ -75,7 +78,7 @@ export function DesktopNavigation({
             className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
               activeTab === tab
                 ? 'bg-blue-50 text-[#1A73E8]'
-                : 'text-gray-600 hover:bg-gray-50'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
             title={TAB_LABELS[tab]}
           >
@@ -94,11 +97,12 @@ export function DesktopNavigation({
       {/* Footer */}
       <div className="p-4 border-t border-gray-100">
         <button
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 transition-all duration-200 w-full`}
+          onClick={onLogout}
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-all duration-200 w-full`}
         >
-          <div className="w-6 h-6 rounded-full bg-gray-200 flex-shrink-0" />
+          <LogOut className="w-6 h-6 flex-shrink-0" />
           {isExpanded && (
-            <span className="text-sm font-medium whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
+            <span className="text-sm font-bold whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
               Sign Out
             </span>
           )}

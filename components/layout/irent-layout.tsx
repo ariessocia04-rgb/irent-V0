@@ -67,10 +67,15 @@ export function IrentLayout() {
   // Message Data
   const [messages, setMessages] = useState(initialMessages);
 
-  // Auth Handler
+  // Auth Handlers
   const handleSignIn = (user: User) => {
     setCurrentUser(user);
     setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
   };
 
   // Enhanced Add Room Handler (Captures Room + Tenant)
@@ -147,7 +152,7 @@ export function IrentLayout() {
     <div className="min-h-screen bg-slate-50 transition-colors duration-300">
       {/* Premium Badge */}
       {PREMIUM_DEMO_MODE && (
-        <div className="fixed top-2 right-2 md:top-4 md:right-4 z-50 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+        <div className="fixed top-2 right-2 md:top-4 md:right-4 z-[60] bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
           🚀 Premium Mode (Demo)
         </div>
       )}
@@ -158,6 +163,7 @@ export function IrentLayout() {
         onTabChange={setActiveTab}
         isExpanded={isSidebarExpanded}
         setIsExpanded={setIsSidebarExpanded}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area - Slides with sidebar */}
