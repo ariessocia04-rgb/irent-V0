@@ -1,25 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChatTabProps } from '@/types/rent';
 import { EmptyState } from '@/components/empty-states/empty-state';
-import { MessageCircle, Send, Rocket } from 'lucide-react';
-import { User } from 'lucide-react';
+import { MessageCircle, Send, Rocket, User as UserIcon, MoreVertical, Phone, Video, Search } from 'lucide-react';
 
 export function ChatTab({
   tenants,
   messages,
   onSendMessage,
   onBroadcast,
+  currentUser,
 }: ChatTabProps) {
   const [messageText, setMessageText] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(
     tenants.length > 0 ? tenants[0].id : null
   );
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const isLandlord = currentUser?.role === 'landlord';
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, selectedTenantId]);
 
   const handleSendMessage = () => {
     if (messageText.trim()) {
@@ -36,114 +46,184 @@ export function ChatTab({
     }, 1500);
   };
 
+  const activeTenant = tenants.find(t => t.id === selectedTenantId);
+
+  // If tenant, they only see messages with landlord
+  const filteredMessages = isLandlord
+    ? messages.filter(m => m.sender === 'Landlord' || activeTenant?.name === m.sender)
+    : messages;
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-12rem)] md:h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-950">Messaging</h1>
-        <p className="text-gray-600 text-sm mt-1">
-          Communicate with your tenants
-        </p>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-950">Messages</h1>
+          <p className="text-gray-600 text-sm">
+            {isLandlord ? 'Manage tenant communications' : 'Chat with your landlord'}
+          </p>
+        </div>
+        {isLandlord && (
+          <Button
+            onClick={handleBroadcast}
+            disabled={isBroadcasting}
+            size="sm"
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md transition-all hover:scale-105 active:scale-95"
+          >
+            {isBroadcasting ? (
+              <span className="inline-block animate-spin mr-2">⚙️</span>
+            ) : (
+              <Rocket className="w-4 h-4 mr-2" />
+            )}
+            Broadcast Alert
+          </Button>
+        )}
       </div>
 
-      {/* Main Chat Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-96">
-        {/* Tenant List */}
-        <Card className="lg:col-span-1 border-gray-100 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h3 className="font-semibold text-gray-950 text-sm">
-              Active Tenants
-            </h3>
-          </div>
+      <Card className="flex-1 border-gray-100 overflow-hidden flex bg-white shadow-lg rounded-xl">
+        {/* Sidebar: Chat List (Only for Landlord) */}
+        {isLandlord && (
+          <div className="w-80 border-r border-gray-100 flex flex-col bg-gray-50/50">
+            <div className="p-4 border-b border-gray-100 space-y-4">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Search tenants..."
+                  className="pl-9 bg-white border-gray-100 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+            </div>
 
-          {tenants.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center p-4">
-              <EmptyState
-                icon={<User className="w-8 h-8" />}
-                title="No tenants"
-                description="Start adding tenants to begin conversations."
-              />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto">
-              {tenants.map((tenant) => (
-                <button
-                  key={tenant.id}
-                  onClick={() => setSelectedTenantId(tenant.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
-                    selectedTenantId === tenant.id
-                      ? 'bg-blue-50'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#1A73E8] text-white text-xs font-semibold flex items-center justify-center">
-                      {tenant.avatar}
-                    </div>
-                    <p className="text-sm font-medium text-gray-950">
-                      {tenant.name}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        {/* Chat Area */}
-        <Card className="lg:col-span-3 border-gray-100 flex flex-col">
-          {!selectedTenantId || tenants.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <EmptyState
-                icon={<MessageCircle className="w-12 h-12" />}
-                title="Select a tenant"
-                description="Messages will appear here once you select a tenant to chat with."
-              />
-            </div>
-          ) : (
-            <>
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-                    No messages yet. Start the conversation!
-                  </div>
-                ) : (
-                  messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${
-                        msg.isLandlord ? 'justify-end' : 'justify-start'
-                      }`}
-                    >
-                      <div
-                        className={`max-w-xs px-4 py-2 rounded-lg ${
-                          msg.isLandlord
-                            ? 'bg-[#1A73E8] text-white'
-                            : 'bg-gray-100 text-gray-950'
-                        }`}
-                      >
-                        <p className="text-sm">{msg.text}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            msg.isLandlord
-                              ? 'text-blue-100'
-                              : 'text-gray-500'
-                          }`}
-                        >
-                          {msg.timestamp.toLocaleTimeString()}
+            {tenants.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center p-4">
+                <EmptyState
+                  icon={<UserIcon className="w-8 h-8 text-gray-300" />}
+                  title="No tenants"
+                  description=""
+                />
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                {tenants.map((tenant) => (
+                  <button
+                    key={tenant.id}
+                    onClick={() => setSelectedTenantId(tenant.id)}
+                    className={`w-full text-left px-4 py-4 border-b border-gray-100 transition-all ${
+                      selectedTenantId === tenant.id
+                        ? 'bg-white shadow-sm border-l-4 border-l-[#1A73E8]'
+                        : 'hover:bg-white/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1A73E8] to-blue-400 text-white text-sm font-bold flex items-center justify-center shadow-inner">
+                          {tenant.avatar}
+                        </div>
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-0.5">
+                          <p className="text-sm font-bold text-gray-950 truncate">
+                            {tenant.name}
+                          </p>
+                          <span className="text-[10px] text-gray-400 font-medium">10:45 AM</span>
+                        </div>
+                        <p className="text-xs text-gray-500 truncate font-medium">
+                          Click to view messages...
                         </p>
                       </div>
                     </div>
-                  ))
-                )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Main Conversation Pane */}
+        <div className="flex-1 flex flex-col bg-white">
+          {isLandlord && (!selectedTenantId || !activeTenant) ? (
+            <div className="flex-1 flex items-center justify-center bg-gray-50/30">
+              <div className="text-center max-w-xs">
+                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MessageCircle className="w-10 h-10 text-[#1A73E8]" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-950">Your Inbox</h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  Select a tenant from the list to view your conversation history and start messaging.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Chat Header */}
+              <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-[#1A73E8] font-bold flex items-center justify-center text-sm shadow-sm">
+                    {isLandlord ? activeTenant?.avatar : 'LL'}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-950">
+                      {isLandlord ? activeTenant?.name : 'Landlord (Property Management)'}
+                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Online Now</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon-sm" className="text-gray-400 hover:text-blue-600"><Phone className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="icon-sm" className="text-gray-400 hover:text-blue-600"><Video className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="icon-sm" className="text-gray-400"><MoreVertical className="w-4 h-4" /></Button>
+                </div>
               </div>
 
-              {/* Input */}
-              <div className="border-t border-gray-100 p-4">
-                <div className="flex gap-2">
+              {/* Message History */}
+              <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 pattern-dots"
+              >
+                <div className="flex justify-center">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] bg-white px-3 py-1 rounded-full shadow-sm">
+                    Yesterday
+                  </span>
+                </div>
+
+                {filteredMessages.map((msg) => {
+                  const isOwnMessage = msg.isLandlord === isLandlord;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
+                    >
+                      <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} max-w-[75%]`}>
+                        <div
+                          className={`px-4 py-3 rounded-2xl shadow-sm ${
+                            isOwnMessage
+                              ? 'bg-gradient-to-br from-[#1A73E8] to-blue-600 text-white rounded-tr-none'
+                              : 'bg-white text-gray-950 rounded-tl-none border border-gray-100'
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed">{msg.text}</p>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1 px-1">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {isOwnMessage && <div className="w-3 h-3 text-blue-500">✓✓</div>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Message Input */}
+              <div className="p-4 bg-white border-t border-gray-100">
+                <div className="flex gap-2 bg-gray-50 p-1.5 rounded-2xl border border-gray-100 focus-within:border-blue-200 focus-within:ring-4 focus-within:ring-blue-50 transition-all">
                   <Input
-                    placeholder="Type a message..."
+                    placeholder="Write a message..."
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyPress={(e) => {
@@ -151,55 +231,19 @@ export function ChatTab({
                         handleSendMessage();
                       }
                     }}
-                    className="border-gray-100"
+                    className="border-none bg-transparent focus-visible:ring-0 text-sm py-5"
                   />
                   <Button
                     onClick={handleSendMessage}
-                    className="bg-[#1A73E8] hover:bg-[#1a73e8]/90 text-white"
+                    disabled={!messageText.trim()}
+                    className="bg-[#1A73E8] hover:bg-blue-600 text-white rounded-xl px-5 h-auto transition-all shadow-md active:scale-95"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-4 h-4 mr-2" />
+                    <span className="font-bold text-xs">SEND</span>
                   </Button>
                 </div>
               </div>
             </>
-          )}
-        </Card>
-      </div>
-
-      {/* Broadcast Console */}
-      <Card className="p-6 border-gray-100 bg-white">
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold text-gray-950">
-              One-Way Administrative Broadcast Console
-            </h3>
-            <p className="text-gray-600 text-sm mt-1">
-              Send important announcements to all tenants
-            </p>
-          </div>
-          <Button
-            onClick={handleBroadcast}
-            disabled={isBroadcasting}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-          >
-            {isBroadcasting ? (
-              <>
-                <span className="inline-block animate-spin mr-2">⚙️</span>
-                Dispatching...
-              </>
-            ) : (
-              <>
-                <Rocket className="w-4 h-4 mr-2" />
-                Dispatch Broadcast Alert
-              </>
-            )}
-          </Button>
-          {isBroadcasting && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-700">
-                Broadcasting announcement to all tenants...
-              </p>
-            </div>
           )}
         </div>
       </Card>

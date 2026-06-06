@@ -4,16 +4,18 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LandlordInfo } from '@/types/rent';
+import { User, LandlordInfo, Tenant } from '@/types/rent';
+import { supabase } from '@/lib/supabase';
 
 interface AuthCardProps {
-  onSignIn: (info: LandlordInfo) => void;
+  onSignIn: (user: User) => void;
 }
 
 export function AuthCard({ onSignIn }: AuthCardProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [error, setError] = useState('');
@@ -21,7 +23,10 @@ export function AuthCard({ onSignIn }: AuthCardProps) {
 
   const validateForm = () => {
     if (!email || !password) return false;
-    if (isSignUp && (!phone || !address)) return false;
+    if (isSignUp && (!fullName || !phone || !address)) {
+      setError('Please fill in all profile details');
+      return false;
+    }
     if (!email.includes('@')) {
       setError('Please enter a valid email');
       return false;
@@ -29,143 +34,206 @@ export function AuthCard({ onSignIn }: AuthCardProps) {
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!validateForm()) {
-      setError('Please fill in all required fields');
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
 
-    // Simulate auth delay
-    setTimeout(() => {
-      onSignIn({
-        email,
-        phone: isSignUp ? phone : '',
-        propertyAddress: isSignUp ? address : '',
-      });
+    try {
+      if (isSignUp) {
+        // Sign up as Landlord (Owner) by default for public registration
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+            }
+          }
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Initialize profile and role
+          await supabase.from('profiles').upsert({
+            id: authData.user.id,
+            full_name: fullName,
+            email: email,
+          });
+
+          await supabase.from('user_roles').insert({
+            user_id: authData.user.id,
+            role: 'owner'
+          });
+
+          // Redirect to sign in or auto sign in
+          setError('Account created! Please sign in.');
+          setIsSignUp(false);
+        }
+      } else {
+        // Sign In
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Fetch Role and Profile
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', authData.user.id)
+            .single();
+
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+          const role = roleData?.role === 'owner' ? 'landlord' : 'tenant';
+
+          if (role === 'landlord') {
+            const landlord: LandlordInfo = {
+              email: authData.user.email!,
+              phone: profileData?.phone || '',
+              propertyAddress: profileData?.property_address || '',
+              role: 'landlord',
+            };
+            onSignIn(landlord);
+          } else {
+            const tenant: Tenant = {
+              id: authData.user.id,
+              name: profileData?.full_name || 'Tenant',
+              avatar: (profileData?.full_name || 'T').split(' ').map((n: string) => n[0]).join('').toUpperCase(),
+              email: authData.user.email!,
+              role: 'tenant',
+              isFirstLogin: false, // We'll handle this based on some condition if needed
+            };
+            onSignIn(tenant);
+          }
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border-gray-100 shadow-sm">
+      <Card className="w-full max-w-md border-gray-100 shadow-sm overflow-hidden rounded-2xl">
         <div className="p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-950">iRent</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              {isSignUp ? 'Create your account' : 'Sign in to your account'}
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-black text-gray-950">iRent</h1>
+            <p className="text-sm text-gray-500 mt-2 font-medium">
+              {isSignUp ? 'Initialize your property workspace' : 'Welcome back to your dashboard'}
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
-            <div className="mb-6 p-3 bg-rose-50 border border-rose-200 rounded-md">
-              <p className="text-sm text-rose-700">{error}</p>
+            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl">
+              <p className="text-sm text-rose-700 font-bold">{error}</p>
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-950 mb-1">
-                Email
-              </label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignUp && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
+                <Input
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="rounded-xl border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-50 py-6"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
               <Input
-                id="email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="border-gray-100"
+                className="rounded-xl border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-50 py-6"
                 disabled={isLoading}
               />
             </div>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-950 mb-1">
-                Password
-              </label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label>
               <Input
-                id="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="border-gray-100"
+                className="rounded-xl border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-50 py-6"
                 disabled={isLoading}
               />
             </div>
 
-            {/* Sign Up Fields */}
             {isSignUp && (
               <>
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-950 mb-1">
-                    Phone Number
-                  </label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
                   <Input
-                    id="phone"
                     type="tel"
-                    placeholder="+63 (555) 000-0000"
+                    placeholder="+63 9XX XXX XXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="border-gray-100"
+                    className="rounded-xl border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-50 py-6"
                     disabled={isLoading}
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-950 mb-1">
-                    Property Address
-                  </label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Property Address</label>
                   <Input
-                    id="address"
-                    type="text"
-                    placeholder="123 Main St, City, Country"
+                    placeholder="123 Main St, City"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="border-gray-100"
+                    className="rounded-xl border-gray-100 bg-gray-50 focus:ring-4 focus:ring-blue-50 py-6"
                     disabled={isLoading}
                   />
                 </div>
               </>
             )}
 
-            {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full bg-[#1A73E8] hover:bg-[#1a73e8]/90 text-white mt-6"
+              className="w-full bg-[#1A73E8] hover:bg-blue-700 text-white mt-6 py-7 rounded-xl font-black shadow-lg transition-all active:scale-95"
               disabled={isLoading}
             >
               {isLoading
-                ? 'Loading...'
+                ? 'PROCESSING...'
                 : isSignUp
-                ? 'Create Account'
-                : 'Sign In'}
+                ? 'CREATE LANDLORD ACCOUNT'
+                : 'SIGN IN TO DASHBOARD'}
             </Button>
           </form>
 
-          {/* Toggle Auth Mode */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              {isSignUp ? 'Already have an account?' : 'Don&apos;t have an account?'}{' '}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-500 font-medium">
+              {isSignUp ? 'Already managing properties?' : "Don't have an account yet?"}{' '}
               <button
                 type="button"
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   setError('');
                 }}
-                className="text-[#1A73E8] font-medium hover:underline"
+                className="text-[#1A73E8] font-bold hover:underline"
               >
-                {isSignUp ? 'Sign In' : 'Sign Up'}
+                {isSignUp ? 'Sign In' : 'Register as Landlord'}
               </button>
             </p>
           </div>
