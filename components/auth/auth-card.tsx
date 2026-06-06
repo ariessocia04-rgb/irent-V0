@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LandlordInfo } from '@/types/rent';
+import { User } from '@/types/rent';
+import { initialTenants, defaultLandlordInfo } from '@/lib/mock-data';
 
 interface AuthCardProps {
-  onSignIn: (info: LandlordInfo) => void;
+  onSignIn: (user: User) => void;
 }
 
 export function AuthCard({ onSignIn }: AuthCardProps) {
@@ -42,11 +43,29 @@ export function AuthCard({ onSignIn }: AuthCardProps) {
 
     // Simulate auth delay
     setTimeout(() => {
-      onSignIn({
-        email,
-        phone: isSignUp ? phone : '',
-        propertyAddress: isSignUp ? address : '',
-      });
+      if (isSignUp) {
+        // For simplicity, sign up as landlord
+        onSignIn({
+          email,
+          password,
+          phone,
+          propertyAddress: address,
+          role: 'landlord',
+        });
+      } else {
+        // Check if landlord
+        if (email === defaultLandlordInfo.email && password === defaultLandlordInfo.password) {
+          onSignIn(defaultLandlordInfo);
+        } else {
+          // Check if tenant
+          const tenant = initialTenants.find(t => t.email === email && t.password === password);
+          if (tenant) {
+            onSignIn(tenant);
+          } else {
+            setError('Invalid email or password');
+          }
+        }
+      }
       setIsLoading(false);
     }, 500);
   };
@@ -57,8 +76,8 @@ export function AuthCard({ onSignIn }: AuthCardProps) {
         <div className="p-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-950">iRent</h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <h1 className="text-2xl font-bold text-gray-950 text-center">iRent</h1>
+            <p className="text-sm text-gray-600 mt-1 text-center">
               {isSignUp ? 'Create your account' : 'Sign in to your account'}
             </p>
           </div>

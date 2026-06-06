@@ -1,4 +1,4 @@
-import { Room, LedgerEntry, SalesData, Tenant, Message } from '@/types/rent';
+import { Room, LedgerEntry, SalesData, Tenant, Message, LandlordInfo } from '@/types/rent';
 
 export const initialRooms: Room[] = [
   {
@@ -7,6 +7,13 @@ export const initialRooms: Room[] = [
     tenantName: 'Maria Santos',
     baseRent: 15000,
     status: 'occupied',
+  },
+  {
+    id: '2',
+    number: '102',
+    tenantName: '',
+    baseRent: 12000,
+    status: 'vacant',
   },
 ];
 
@@ -43,16 +50,21 @@ export const initialTenants: Tenant[] = [
     id: '1',
     name: 'Maria Santos',
     avatar: 'MS',
+    email: 'maria@example.com',
+    password: 'password123',
+    role: 'tenant',
+    isFirstLogin: false,
+    roomId: '1',
   },
   {
     id: '2',
     name: 'Juan dela Cruz',
     avatar: 'JC',
-  },
-  {
-    id: '3',
-    name: 'Ana Reyes',
-    avatar: 'AR',
+    email: 'juan@example.com',
+    password: 'password123',
+    role: 'tenant',
+    isFirstLogin: true,
+    roomId: '',
   },
 ];
 
@@ -87,8 +99,10 @@ export const initialMessages: Message[] = [
   },
 ];
 
-export const defaultLandlordInfo = {
-  email: '',
-  phone: '',
-  propertyAddress: '',
+export const defaultLandlordInfo: LandlordInfo = {
+  email: 'landlord@example.com',
+  password: 'password123',
+  phone: '+63 9XX XXX XXXX',
+  propertyAddress: '123 iRent St, Manila',
+  role: 'landlord',
 };

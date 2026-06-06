@@ -3,6 +3,7 @@
 export type PaymentStatus = 'pending' | 'paid' | 'overdue';
 export type RoomStatus = 'occupied' | 'vacant';
 export type TabType = 'ROOM' | 'REPORT' | 'SALES' | 'UPDATES' | 'CHAT';
+export type UserRole = 'landlord' | 'tenant';
 
 // Room data model
 export interface Room {
@@ -36,7 +37,24 @@ export interface Tenant {
   id: string;
   name: string;
   avatar: string;
+  email: string;
+  password?: string;
+  phone?: string;
+  isFirstLogin?: boolean;
+  roomId?: string;
+  role: 'tenant';
 }
+
+// Landlord configuration
+export interface LandlordInfo {
+  email: string;
+  password?: string;
+  phone: string;
+  propertyAddress: string;
+  role: 'landlord';
+}
+
+export type User = LandlordInfo | Tenant;
 
 // Chat message model
 export interface Message {
@@ -47,19 +65,12 @@ export interface Message {
   isLandlord: boolean;
 }
 
-// Landlord configuration
-export interface LandlordInfo {
-  email: string;
-  phone: string;
-  propertyAddress: string;
-}
-
 // IrentLayout props type
 export interface IrentLayoutProps {
   isLoggedIn: boolean;
   setIsLoggedIn: (value: boolean) => void;
-  landlordInfo: LandlordInfo;
-  setLandlordInfo: (info: LandlordInfo) => void;
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   rooms: Room[];
@@ -93,6 +104,8 @@ export interface RoomTabProps {
   rooms: Room[];
   onRoomClick: (room: Room) => void;
   onAddRoom?: () => void;
+  onCreateTenant?: (roomId: string, email: string, password: string) => void;
+  userRole?: UserRole;
 }
 
 export interface ReportTabProps {
@@ -107,6 +120,7 @@ export interface SalesTabProps {
 
 export interface UpdatesTabProps {
   roomCount: number;
+  subscriptionTier?: 'free' | 'pro' | 'premium';
 }
 
 export interface ChatTabProps {
@@ -114,6 +128,7 @@ export interface ChatTabProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   onBroadcast: (message: string) => void;
+  currentUser: User | null;
 }
 
 // Empty state props

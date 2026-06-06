@@ -6,20 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChatTabProps } from '@/types/rent';
 import { EmptyState } from '@/components/empty-states/empty-state';
-import { MessageCircle, Send, Rocket } from 'lucide-react';
-import { User } from 'lucide-react';
+import { MessageCircle, Send, Rocket, User as UserIcon } from 'lucide-react';
 
 export function ChatTab({
   tenants,
   messages,
   onSendMessage,
   onBroadcast,
+  currentUser,
 }: ChatTabProps) {
   const [messageText, setMessageText] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(
     tenants.length > 0 ? tenants[0].id : null
   );
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+
+  const isLandlord = currentUser?.role === 'landlord';
 
   const handleSendMessage = () => {
     if (messageText.trim()) {
@@ -36,63 +38,70 @@ export function ChatTab({
     }, 1500);
   };
 
+  // If tenant, they only see messages with landlord, so we don't need a tenant list
+  const filteredMessages = isLandlord
+    ? messages.filter(m => m.sender === 'Landlord' || tenants.find(t => t.id === selectedTenantId)?.name === m.sender)
+    : messages;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-950">Messaging</h1>
         <p className="text-gray-600 text-sm mt-1">
-          Communicate with your tenants
+          {isLandlord ? 'Communicate with your tenants' : 'Chat with your landlord'}
         </p>
       </div>
 
       {/* Main Chat Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-96">
-        {/* Tenant List */}
-        <Card className="lg:col-span-1 border-gray-100 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h3 className="font-semibold text-gray-950 text-sm">
-              Active Tenants
-            </h3>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-[400px]">
+        {/* Tenant List (Only for Landlord) */}
+        {isLandlord && (
+          <Card className="lg:col-span-1 border-gray-100 overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-100 bg-gray-50">
+              <h3 className="font-semibold text-gray-950 text-sm">
+                Active Tenants
+              </h3>
+            </div>
 
-          {tenants.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center p-4">
-              <EmptyState
-                icon={<User className="w-8 h-8" />}
-                title="No tenants"
-                description="Start adding tenants to begin conversations."
-              />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto">
-              {tenants.map((tenant) => (
-                <button
-                  key={tenant.id}
-                  onClick={() => setSelectedTenantId(tenant.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
-                    selectedTenantId === tenant.id
-                      ? 'bg-blue-50'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#1A73E8] text-white text-xs font-semibold flex items-center justify-center">
-                      {tenant.avatar}
+            {tenants.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center p-4">
+                <EmptyState
+                  icon={<UserIcon className="w-8 h-8" />}
+                  title="No tenants"
+                  description="Start adding tenants to begin conversations."
+                />
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto">
+                {tenants.map((tenant) => (
+                  <button
+                    key={tenant.id}
+                    onClick={() => setSelectedTenantId(tenant.id)}
+                    className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
+                      selectedTenantId === tenant.id
+                        ? 'bg-blue-50'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#1A73E8] text-white text-xs font-semibold flex items-center justify-center">
+                        {tenant.avatar}
+                      </div>
+                      <p className="text-sm font-medium text-gray-950">
+                        {tenant.name}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-gray-950">
-                      {tenant.name}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </Card>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Chat Area */}
-        <Card className="lg:col-span-3 border-gray-100 flex flex-col">
-          {!selectedTenantId || tenants.length === 0 ? (
+        <Card className={`${isLandlord ? 'lg:col-span-3' : 'lg:col-span-4'} border-gray-100 flex flex-col`}>
+          {(isLandlord && (!selectedTenantId || tenants.length === 0)) ? (
             <div className="flex-1 flex items-center justify-center">
               <EmptyState
                 icon={<MessageCircle className="w-12 h-12" />}
@@ -103,22 +112,22 @@ export function ChatTab({
           ) : (
             <>
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
-                {messages.length === 0 ? (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white min-h-[300px]">
+                {filteredMessages.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-500 text-sm">
                     No messages yet. Start the conversation!
                   </div>
                 ) : (
-                  messages.map((msg) => (
+                  filteredMessages.map((msg) => (
                     <div
                       key={msg.id}
                       className={`flex ${
-                        msg.isLandlord ? 'justify-end' : 'justify-start'
+                        msg.isLandlord === isLandlord ? 'justify-end' : 'justify-start'
                       }`}
                     >
                       <div
                         className={`max-w-xs px-4 py-2 rounded-lg ${
-                          msg.isLandlord
+                          msg.isLandlord === isLandlord
                             ? 'bg-[#1A73E8] text-white'
                             : 'bg-gray-100 text-gray-950'
                         }`}
@@ -126,7 +135,7 @@ export function ChatTab({
                         <p className="text-sm">{msg.text}</p>
                         <p
                           className={`text-xs mt-1 ${
-                            msg.isLandlord
+                            msg.isLandlord === isLandlord
                               ? 'text-blue-100'
                               : 'text-gray-500'
                           }`}
@@ -166,43 +175,45 @@ export function ChatTab({
         </Card>
       </div>
 
-      {/* Broadcast Console */}
-      <Card className="p-6 border-gray-100 bg-white">
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-semibold text-gray-950">
-              One-Way Administrative Broadcast Console
-            </h3>
-            <p className="text-gray-600 text-sm mt-1">
-              Send important announcements to all tenants
-            </p>
-          </div>
-          <Button
-            onClick={handleBroadcast}
-            disabled={isBroadcasting}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
-          >
-            {isBroadcasting ? (
-              <>
-                <span className="inline-block animate-spin mr-2">⚙️</span>
-                Dispatching...
-              </>
-            ) : (
-              <>
-                <Rocket className="w-4 h-4 mr-2" />
-                Dispatch Broadcast Alert
-              </>
-            )}
-          </Button>
-          {isBroadcasting && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-700">
-                Broadcasting announcement to all tenants...
+      {/* Broadcast Console (Only for Landlord) */}
+      {isLandlord && (
+        <Card className="p-6 border-gray-100 bg-white">
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-gray-950">
+                One-Way Administrative Broadcast Console
+              </h3>
+              <p className="text-gray-600 text-sm mt-1">
+                Send important announcements to all tenants
               </p>
             </div>
-          )}
-        </div>
-      </Card>
+            <Button
+              onClick={handleBroadcast}
+              disabled={isBroadcasting}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+            >
+              {isBroadcasting ? (
+                <>
+                  <span className="inline-block animate-spin mr-2">⚙️</span>
+                  Dispatching...
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-4 h-4 mr-2" />
+                  Dispatch Broadcast Alert
+                </>
+              )}
+            </Button>
+            {isBroadcasting && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-700">
+                  Broadcasting announcement to all tenants...
+                </p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

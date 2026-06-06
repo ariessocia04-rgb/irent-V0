@@ -1,14 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { TabType, LandlordInfo } from '@/types/rent';
+import { TabType, User, Tenant } from '@/types/rent';
 import {
   initialRooms,
   initialLedger,
   initialSales,
   initialTenants,
   initialMessages,
-  defaultLandlordInfo,
 } from '@/lib/mock-data';
 import { AuthCard } from '@/components/auth/auth-card';
 import { DesktopNavigation } from '@/components/layout/desktop-navigation';
@@ -18,6 +17,7 @@ import { ReportTab } from '@/components/tabs/report-tab';
 import { SalesTab } from '@/components/tabs/sales-tab';
 import { UpdatesTab } from '@/components/tabs/updates-tab';
 import { ChatTab } from '@/components/tabs/chat-tab';
+import { TenantOnboardingModal } from '@/components/auth/tenant-onboarding-modal';
 
 export function IrentLayout() {
   // Premium Demo Mode - Set to true for full access
@@ -25,15 +25,16 @@ export function IrentLayout() {
 
   // Authentication State
   const [isLoggedIn, setIsLoggedIn] = useState(PREMIUM_DEMO_MODE);
-  const [landlordInfo, setLandlordInfo] = useState<LandlordInfo>(
+  const [currentUser, setCurrentUser] = useState<User | null>(
     PREMIUM_DEMO_MODE
       ? {
-          email: 'premium@demo.com',
-          password: 'demo',
+          email: 'landlord@example.com',
+          password: 'password123',
           phone: '+63 9XX XXX XXXX',
-          propertyAddress: 'Premium Demo Property',
+          propertyAddress: '123 iRent St, Manila',
+          role: 'landlord',
         }
-      : defaultLandlordInfo
+      : null
   );
 
   // Subscription Tier - Set to 'premium' for full access
@@ -64,15 +65,51 @@ export function IrentLayout() {
   const [messages, setMessages] = useState(initialMessages);
 
   // Auth Handler
-  const handleSignIn = (info: LandlordInfo) => {
-    setLandlordInfo(info);
+  const handleSignIn = (user: User) => {
+    setCurrentUser(user);
     setIsLoggedIn(true);
+  };
+
+  // Tenant Creation Handler
+  const handleCreateTenant = (roomId: string, email: string, password: string) => {
+    const newTenant: Tenant = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: 'New Tenant', // Placeholder until they complete onboarding
+      avatar: 'NT',
+      email,
+      password,
+      role: 'tenant',
+      isFirstLogin: true,
+      roomId,
+    };
+
+    setTenants([...tenants, newTenant]);
+    setRooms(rooms.map(room =>
+      room.id === roomId
+        ? { ...room, status: 'occupied', tenantName: 'Pending Onboarding' }
+        : room
+    ));
+
+    console.log('[v0] Tenant created:', newTenant);
+  };
+
+  // Onboarding Completion Handler
+  const handleOnboardingComplete = (updatedTenant: Tenant) => {
+    setTenants(tenants.map(t => t.id === updatedTenant.id ? updatedTenant : t));
+    setCurrentUser(updatedTenant);
+    setRooms(rooms.map(room =>
+      room.id === updatedTenant.roomId
+        ? { ...room, tenantName: updatedTenant.name }
+        : room
+    ));
   };
 
   // Show auth screen if not logged in
   if (!isLoggedIn) {
     return <AuthCard onSignIn={handleSignIn} />;
   }
+
+  const userRole = currentUser?.role || 'landlord';
 
   // Main dashboard layout
   return (
@@ -101,14 +138,16 @@ export function IrentLayout() {
                   const newRoom = {
                     id: Math.random().toString(),
                     number: String(rooms.length + 101),
-                    tenantName: `Tenant ${rooms.length + 1}`,
+                    tenantName: '',
                     baseRent: 1500,
                     status: 'vacant' as const,
                   };
                   setRooms([...rooms, newRoom]);
                 }
               }}
+              onCreateTenant={handleCreateTenant}
               isPremium={subscriptionTier === 'premium'}
+              userRole={userRole}
             />
           )}
 
@@ -146,16 +185,17 @@ export function IrentLayout() {
                   ...messages,
                   {
                     id: Math.random().toString(),
-                    sender: 'Landlord',
+                    sender: currentUser?.role === 'landlord' ? 'Landlord' : (currentUser as Tenant).name,
                     text: message,
                     timestamp: new Date(),
-                    isLandlord: true,
+                    isLandlord: currentUser?.role === 'landlord',
                   },
                 ]);
               }}
               onBroadcast={(message) => {
                 console.log('[v0] Broadcast:', message);
               }}
+              currentUser={currentUser}
             />
           )}
         </div>
@@ -163,6 +203,15 @@ export function IrentLayout() {
 
       {/* Mobile Navigation */}
       <MobileBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Tenant Onboarding Modal */}
+      {currentUser?.role === 'tenant' && currentUser.isFirstLogin && (
+        <TenantOnboardingModal
+          tenant={currentUser}
+          isOpen={true}
+          onComplete={handleOnboardingComplete}
+        />
+      )}
     </div>
   );
 }
